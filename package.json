@@ -1,0 +1,18 @@
+{
+  "name": "rezhim-dnya",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Мой режим дня — расписание, отметки, статистика и напоминания",
+  "scripts": {
+    "sync": "cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/app": "^8.0.0",
+    "@capacitor/core": "^8.6.0",
+    "@capacitor/local-notifications": "^8.3.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.6.0"
+  }
+}

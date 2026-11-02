@@ -1,0 +1,11 @@
+{
+  "appId": "com.rezhim.dnya",
+  "appName": "Мой режим дня",
+  "webDir": "www",
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_notify",
+      "iconColor": "#0f8a8a"
+    }
+  }
+}

@@ -1,0 +1,1285 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#14161b"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Мой режим дня</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: "сейчас" крупно сверху → отметки дня → лента дня + неделя → статистика.
+   Цвет = проект. Маленькое окно (виджет) показывает только карточку "Сейчас". */
+:root{
+  --bg:#f3f2ee; --surface:#ffffff; --line:#dedcd4; --fg:#1d2026; --muted:#666a72;
+  --avatar:#0f8a8a; --art:#c2562b; --dnd:#7a4fb0; --p3d:#2f6fc0; --stock:#a07a10;
+  --bf:#c23d6c; --games:#3f8f3a; --rest:#8a8d94; --meds:#c43c3c; --sick:#5b7fa6;
+  --display:"Unbounded","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+  --body:"Golos Text","Segoe UI",system-ui,sans-serif;
+  --mono:"JetBrains Mono","Cascadia Mono",Consolas,ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#14161b; --surface:#1d2027; --line:#2c3039; --fg:#eceae4; --muted:#9a9ea8;
+  --avatar:#3cc4c0; --art:#f08152; --dnd:#b18ae6; --p3d:#6aa2f0; --stock:#e0b440;
+  --bf:#f0709c; --games:#7ccc6c; --rest:#7b7f88; --meds:#ff7f7f; --sick:#8fb3dc; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#14161b; --surface:#1d2027; --line:#2c3039; --fg:#eceae4; --muted:#9a9ea8;
+  --avatar:#3cc4c0; --art:#f08152; --dnd:#b18ae6; --p3d:#6aa2f0; --stock:#e0b440;
+  --bf:#f0709c; --games:#7ccc6c; --rest:#7b7f88; --meds:#ff7f7f; --sick:#8fb3dc; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--fg);font:16px/1.5 var(--body);margin:0}
+.wrap{max-width:980px;margin:0 auto;padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:28px}
+header{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px}
+h1{font:700 1.15rem var(--display);margin:0;letter-spacing:.01em}
+.clock{font:500 1rem var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.now{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px;display:grid;gap:14px;position:relative;overflow:hidden}
+.now::before{content:"";position:absolute;inset:0 auto 0 0;width:6px;background:var(--c)}
+.eyebrow{font:600 .72rem var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.now h2{font:700 clamp(1.5rem,4.5vw,2.4rem)/1.15 var(--display);margin:0;color:var(--c);text-wrap:balance}
+.now p{margin:0;max-width:62ch}
+.meta{display:flex;flex-wrap:wrap;gap:10px 24px;font:500 .95rem var(--mono);font-variant-numeric:tabular-nums}
+.meta span:empty{display:none}
+.bar{height:6px;background:var(--line);border-radius:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--c);width:0}
+.next{color:var(--muted);font-size:.95rem}
+.next b{color:var(--fg);font-weight:600}
+.next:empty{display:none}
+
+/* Отметки дня */
+.marks{display:flex;flex-wrap:wrap;gap:10px}
+.mark{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer;font-weight:500;user-select:none}
+.mark input{width:18px;height:18px;margin:0;accent-color:var(--mc);cursor:pointer}
+.mark:has(input:checked){border-color:var(--mc);background:color-mix(in srgb,var(--mc) 12%,var(--surface))}
+.mark small{display:block;font-weight:400;color:var(--muted);font-size:.8rem;line-height:1.3}
+.mark input:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+
+.cols{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:28px}
+@media (max-width:760px){.cols{grid-template-columns:1fr}}
+h3{font:500 .95rem var(--display);margin:0 0 12px}
+.day{list-style:none;margin:0;padding:0;display:grid}
+.day li{display:grid;grid-template-columns:96px 1fr auto;gap:12px;align-items:start;padding:9px 0;border-top:1px solid var(--line)}
+.day li.cur{background:color-mix(in srgb,var(--c) 10%,transparent);border-radius:8px;border-top-color:transparent;padding-inline:8px;margin-inline:-8px}
+.day li.past .ttl{color:var(--muted)}
+.day li.medrow .ttl{font-weight:500}
+.day li.off .ttl{color:var(--muted);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--muted) 60%,transparent)}
+.day li.off .ttl::before{background:var(--line)}
+.t{font:500 .82rem var(--mono);color:var(--muted);padding-top:2px;font-variant-numeric:tabular-nums}
+.ttl{font-weight:600;display:flex;gap:8px;align-items:baseline}
+.ttl::before{content:"";flex:none;width:9px;height:9px;border-radius:50%;background:var(--c);transform:translateY(-1px)}
+.sub{font-size:.88rem;color:var(--muted);margin-left:17px}
+.day input{width:18px;height:18px;accent-color:var(--c);margin-top:3px;cursor:pointer}
+.day input:focus-visible{outline:2px solid var(--p3d);outline-offset:2px}
+.week{display:grid;gap:8px;align-content:start}
+.wk{display:grid;grid-template-columns:44px repeat(3,minmax(0,1fr));gap:6px;font-size:.82rem}
+.wk .d{font:600 .8rem var(--mono);color:var(--muted);align-self:center}
+.wk .d.today{color:var(--fg)}
+.chip{padding:6px 8px;border-radius:7px;background:color-mix(in srgb,var(--c) 16%,transparent);color:var(--fg);line-height:1.25;min-width:0;overflow-wrap:anywhere}
+.chip.off{background:transparent;border:1px dashed var(--line);color:var(--muted)}
+.wkh{font:600 .7rem var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.82rem;color:var(--muted)}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend span::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--c)}
+
+/* Статистика */
+.stats{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px;display:grid;gap:18px}
+.stats-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.stats-head h3{margin:0}
+.seg{display:flex;gap:4px;align-items:center}
+.seg button{font:600 .82rem var(--body);border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:8px;padding:5px 11px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.seg button:focus-visible{outline:2px solid var(--p3d);outline-offset:2px}
+.seg .nav{padding:5px 9px;font-family:var(--mono)}
+.period{font:500 .85rem var(--mono);color:var(--muted);min-width:0}
+.note{font-size:.78rem;color:var(--muted)}
+.note:empty{display:none}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.tile{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:2px}
+.tile b{font:700 1.35rem var(--display);font-variant-numeric:tabular-nums}
+.tile span{font-size:.8rem;color:var(--muted)}
+.bars{display:grid;gap:8px}
+.brow{display:grid;grid-template-columns:minmax(0,170px) 1fr 64px;gap:10px;align-items:center;font-size:.88rem}
+.brow .lab{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brow .track{height:10px;background:var(--line);border-radius:6px;overflow:hidden}
+.brow .track i{display:block;height:100%;background:var(--c);border-radius:6px}
+.brow .val{font:500 .82rem var(--mono);text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+.empty{color:var(--muted);font-size:.9rem}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.cal .h{font:600 .7rem var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:center}
+.cell{border:1px solid var(--line);border-radius:8px;padding:6px 7px;min-height:58px;display:grid;align-content:space-between;gap:2px;font-size:.75rem;position:relative;background:color-mix(in srgb,var(--p3d) calc(var(--lvl,0) * 55%),transparent)}
+.cell.blank{border-color:transparent;background:none}
+.cell.today{outline:2px solid var(--fg);outline-offset:-1px}
+.cell .n{font:600 .78rem var(--mono);color:var(--muted)}
+.cell .h1{font:500 .78rem var(--mono);font-variant-numeric:tabular-nums}
+.cell.sick{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--sick) 22%,transparent) 0 6px,transparent 6px 12px);border-color:color-mix(in srgb,var(--sick) 60%,transparent)}
+.cell .tags{display:flex;gap:4px}
+.cell .tags i{width:8px;height:8px;border-radius:50%;display:block}
+.cell .tags i.sq{border-radius:2px}
+.cal-legend span.round::before{border-radius:50%}
+.cal-legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.78rem;color:var(--muted)}
+.cal-legend span{display:flex;align-items:center;gap:6px}
+.cal-legend span::before{content:"";width:12px;height:12px;border-radius:3px;background:var(--sw);border:1px solid var(--line)}
+
+.rules{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px}
+.rules ul{margin:0;padding-left:1.1em;display:grid;gap:6px;max-width:70ch}
+.med{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 12px;border-radius:9px;background:color-mix(in srgb,var(--meds) 14%,transparent);border:1px solid color-mix(in srgb,var(--meds) 45%,transparent)}
+.med b{color:var(--meds)}
+.med span{font-size:.9rem;flex:1 1 220px;min-width:0}
+.med button{font:600 .85rem var(--body);border:0;border-radius:7px;padding:6px 12px;background:var(--meds);color:var(--bg);cursor:pointer}
+.med button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+@media (prefers-reduced-motion:no-preference){.bar i,.brow .track i{transition:width .6s ease}}
+
+
+.now.hasmed p{display:none}
+/* Настройки напоминаний */
+.settings{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px;display:grid;gap:14px}
+.settings h3{margin:0}
+.srow{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.srow span{flex:1 1 200px;min-width:0}
+.srow small{display:block;color:var(--muted);font-size:.8rem;line-height:1.35}
+.btn{font:600 .88rem var(--body);border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:9px;padding:8px 14px;cursor:pointer}
+.btn.primary{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.btn:focus-visible{outline:2px solid var(--p3d);outline-offset:2px}
+.sw{width:22px;height:22px;accent-color:var(--avatar);cursor:pointer;margin:0}
+.status{font-size:.85rem;color:var(--muted)}
+.status.warn{color:var(--meds)}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+@media (max-width:520px){.wrap{gap:22px;padding-top:max(18px,env(safe-area-inset-top,0px))}.now{padding:18px}.stats,.rules,.settings{padding:16px}.brow{grid-template-columns:minmax(0,110px) 1fr 56px}.cell{min-height:48px;padding:4px 5px}.day li{grid-template-columns:78px 1fr auto}}
+</style>
+<div class="wrap">
+  <header><h1>Мой режим дня</h1><span class="clock" id="clock"></span></header>
+
+  <section class="now" id="now" aria-live="polite">
+    <span class="eyebrow" id="nowEyebrow">Сейчас</span>
+    <h2 id="nowTitle">…</h2>
+    <p id="nowSub"></p>
+    <div class="meta"><span id="nowTime"></span><span id="nowLeft"></span></div>
+    <div class="bar"><i id="nowBar"></i></div>
+    <div class="next" id="next"></div>
+    <div class="med" id="med" hidden><b id="medTitle"></b><span id="medText"></span><button id="medBtn" type="button">Выпила</button></div>
+      </section>
+
+  <div class="marks" role="group" aria-label="Отметки на сегодня">
+    <label class="mark" style="--mc:var(--sick)"><input type="checkbox" id="sickT">
+      <span>Болею — сегодня отдых<small>Рабочие блоки снимаются, напоминания о них не приходят</small></span></label>
+    <label class="mark" style="--mc:var(--bf)"><input type="checkbox" id="bfT">
+      <span>Созвонились с парнем и играли<small>Отметка для статистики</small></span></label>
+  </div>
+
+  <div class="cols">
+    <section>
+      <h3 id="dayHead">Сегодня</h3>
+      <ul class="day" id="day"></ul>
+    </section>
+    <section class="week">
+      <h3>Неделя: фокус по дням</h3>
+      <div class="wk" id="wk"></div>
+      <div class="legend" id="legend"></div>
+    </section>
+  </div>
+
+  <section class="stats" aria-labelledby="statsH">
+    <div class="stats-head">
+      <h3 id="statsH">Что и сколько я сделала</h3>
+      <div class="seg">
+        <button type="button" id="pWeek" aria-pressed="true">Неделя</button>
+        <button type="button" id="pMonth" aria-pressed="false">Месяц</button>
+        <button type="button" class="nav" id="pPrev" aria-label="Предыдущий период">‹</button>
+        <button type="button" class="nav" id="pNext" aria-label="Следующий период">›</button>
+      </div>
+    </div>
+    <div class="period" id="period"></div>
+        <div class="tiles" id="tiles"></div>
+    <div>
+      <h3>Часы по проектам</h3>
+      <div class="bars" id="bars"></div>
+    </div>
+    <div>
+      <h3>По дням</h3>
+      <div class="cal" id="cal"></div>
+    </div>
+    <div class="cal-legend">
+      <span style="--sw:color-mix(in srgb,var(--p3d) 50%,transparent)">Чем темнее, тем больше часов</span>
+      <span style="--sw:repeating-linear-gradient(135deg,var(--sick) 0 3px,transparent 3px 6px)">Болела</span>
+      <span class="round" style="--sw:var(--bf)">Играли с парнем</span>
+      <span style="--sw:var(--meds)">Все таблетки выпиты</span>
+    </div>
+  </section>
+
+  <section class="settings" aria-labelledby="setH">
+    <h3 id="setH">Напоминания</h3>
+    <div class="status" id="nStatus">Проверяю разрешения…</div>
+    <div class="btns">
+      <button type="button" class="btn primary" id="nAllow" hidden>Разрешить уведомления</button>
+      <button type="button" class="btn" id="nExact" hidden>Разрешить точное время</button>
+      <button type="button" class="btn" id="nTest">Проверить уведомление</button>
+    </div>
+    <label class="srow"><span>О начале блоков<small>В начале каждого блока: что делать и одна цель</small></span><input type="checkbox" class="sw" id="optBlocks"></label>
+    <label class="srow"><span>Только рабочие блоки<small>Без напоминаний о перерывах, обеде и свободном вечере</small></span><input type="checkbox" class="sw" id="optWorkOnly"></label>
+    <label class="srow"><span>О таблетках<small>В нужное время и ещё раз через 30 минут, если не отмечено. Можно отметить прямо из уведомления</small></span><input type="checkbox" class="sw" id="optMeds"></label>
+    <label class="srow"><span>Отбой<small>За 30 минут до сна</small></span><input type="checkbox" class="sw" id="optSleep"></label>
+    <div class="srow"><span>Резервная копия отметок<small>Отметки хранятся только на телефоне. Скопируй копию в заметки, чтобы не потерять при переустановке</small></span>
+      <span class="btns" style="flex:none"><button type="button" class="btn" id="bkExport">Скопировать</button><button type="button" class="btn" id="bkImport">Восстановить</button></span></div>
+  </section>
+
+  <section class="rules">
+    <h3>Правила, чтобы не распыляться</h3>
+    <ul>
+      <li><b>Один проект на блок.</b> Пока идёт блок НРИ, концепты и 3D не открываешь. Мысль про другой проект записываешь в заметку и возвращаешься.</li>
+      <li><b>Перед блоком одна цель.</b> Не «поработать над сайтом», а «сверстать страницу персонажа». Сделала цель раньше — начинай следующую из того же проекта.</li>
+      <li><b>Отмечай сделанное.</b> Галочка у блока — это часы в статистике. Не сделала — не ставь, это тоже честная информация.</li>
+      <li><b>Болеешь — отдыхаешь.</b> Отметка «Болею» снимает рабочие блоки без чувства вины. Восстановление — тоже часть плана.</li>
+      <li><b>Перерыв — без экрана.</b> Встать, вода, окно, растяжка. Ютуб и соцсети перерывом не считаются.</li>
+      <li><b>После 18:30 работы нет.</b> Вечер для игр и отдыха. Так завтра будут силы.</li>
+    </ul>
+  </section>
+</div>
+
+<!-- РАСПИСАНИЕ: отсюда его читают и страница, и уведомления -->
+<script id="schedule" type="application/json">
+{
+ "sleep": "23:30",
+ "projects": {
+  "avatar": "НРИ по Avatar",
+  "art": "Концепт-арты",
+  "dnd": "DnD сеттинг",
+  "p3d": "3D: практика и портфолио",
+  "stock": "3D на стоки",
+  "games": "Игры",
+  "rest": "Отдых и рутина",
+  "meds": "Таблетки"
+ },
+ "days": {
+  "0": {
+   "name": "Воскресенье",
+   "short": "Вс",
+   "wake": "10:00",
+   "blocks": [
+    {
+     "s": "10:00",
+     "e": "11:00",
+     "k": "rest",
+     "t": "Подъём без спешки",
+     "d": "Завтрак, прогулка."
+    },
+    {
+     "s": "12:00",
+     "e": "13:00",
+     "k": "rest",
+     "t": "Обзор недели и план",
+     "d": "Что успела, что перенести. Цели на каждый день новой недели."
+    },
+    {
+     "s": "13:00",
+     "e": "19:00",
+     "k": "games",
+     "t": "Свободный день",
+     "d": "Игры, отдых, что угодно кроме работы."
+    },
+    {
+     "s": "19:00",
+     "e": "22:30",
+     "k": "games",
+     "t": "Свободный вечер",
+     "d": "Фильм, сериал, игры — что захочется."
+    },
+    {
+     "s": "23:00",
+     "e": "23:30",
+     "k": "rest",
+     "t": "Готовиться ко сну",
+     "d": "Завтра понедельник: подъём в 09:00."
+    }
+   ],
+   "meds": [
+    {
+     "t": "10:30",
+     "title": "Таблетки: завтрак",
+     "d": "Магне B6: 2 таблетки во время еды, запить стаканом воды. Афобазол 10 мг: 1 таблетка после еды."
+    },
+    {
+     "t": "13:15",
+     "title": "Таблетки: обед",
+     "d": "Магне B6: 2 таблетки во время еды, запить стаканом воды. Афобазол 10 мг: 1 таблетка после еды."
+    },
+    {
+     "t": "19:00",
+     "title": "Таблетки: ужин",
+     "d": "Магне B6: 2 таблетки во время еды, запить стаканом воды. Афобазол 10 мг: 1 таблетка после еды."
+    }
+   ]
+  },
+  "1": {
+   "name": "Понедельник",
+   "short": "Пн",
+   "wake": "09:00",
+   "blocks": [
+    {
+     "s": "09:00",
+     "e": "09:45",
+     "k": "rest",
+     "t": "Подъём",
+     "d": "Вода, умыться, завтрак. Телефон не трогать первые 30 минут."
+    },
+    {
+     "s": "09:45",
+     "e": "10:00",
+     "k": "rest",
+     "t": "Сесть за комп",
+     "d": "Открыть план, записать одну цель на фокус-блок."
+    },
+    {
+     "s": "10:00",
+     "e": "11:30",
+     "k": "avatar",
+     "t": "НРИ Avatar: код сайта",
+     "d": "Вёрстка и логика сайта. Одна страница или одна фича за блок."
+    },
+    {
+     "s": "11:30",
+     "e": "11:45",
+     "k": "rest",
+     "t": "Перерыв",
+     "d": "Встать, размяться, вода. Без экрана."
+    },
+    {
+     "s": "11:45",
+     "e": "13:00",
+     "k": "avatar",
+     "t": "НРИ Avatar: код сайта",
+     "d": "Вёрстка и логика сайта. Одна страница или одна фича за блок."
+    },
+    {
+     "s": "13:00",
+     "e": "14:00",
+     "k": "rest",
+     "t": "Обед и прогулка",
+     "d": "Хотя бы 20 минут на улице."
+    },
+    {
+     "s": "14:00",
+     "e": "15:30",
+     "k": "p3d",
+     "t": "3D для НРИ Avatar",
+     "d": "Оружие, броня или существа Пандоры. Одна модель за раз."
+    },
+    {
+     "s": "15:30",
+     "e": "15:45",
+     "k": "rest",
+     "t": "Перерыв",
+     "d": "Глаза и спина: отойти от монитора."
+    },
+    {
+     "s": "15:45",
+     "e": "17:00",
+     "k": "p3d",
+     "t": "3D для НРИ Avatar",
+     "d": "Оружие, броня или существа Пандоры. Одна модель за раз."
+    },
+    {
+     "s": "17:00",
+     "e": "17:30",
+     "k": "rest",
+     "t": "Перекус",
+     "d": "Отдых от экрана."
+    },
+    {
+     "s": "17:30",
+     "e": "18:30",
+     "k": "art",
+     "t": "Скетчи и референсы",
+     "d": "Быстрые наброски и сбор рефов для следующих концептов."
+    },
+    {
+     "s": "18:30",
+     "e": "19:30",
+     "k": "rest",
+     "t": "Ужин, конец работы",
+     "d": "Закрыть рабочие программы. Записать, с чего начать завтра."
+    },
+    {
+     "s": "19:30",
+     "e": "23:00",
+     "k": "games",
+     "t": "Свободный вечер",
+     "d": "Игры, фильмы, отдых — время для себя."
+    },
+    {
+     "s": "23:00",
+     "e": "23:30",
+     "k": "rest",
+     "t": "Готовиться ко сну",
+     "d": "Экран выключить, душ, свет приглушить."
+    }
+   ],
+   "meds": [
+    {
+     "t": "09:20",
+     "title": "Таблетки: завтрак",
+     "d": "Магне B6: 2 таблетки во время еды, запить стаканом воды. Афобазол 10 мг: 1 таблетка после еды."
+    },
+    {
+     "t": "13:30",
+     "title": "Таблетки: обед",
+     "d": "Магне B6: 2 таблетки во время еды, запить стаканом воды. Афобазол 10 мг: 1 таблетка после еды."
+    },
+    {
+     "t": "19:00",
+     "title": "Таблетки: ужин",
+     "d": "Магне B6: 2 таблетки во время еды, запить стаканом воды. Афобазол 10 мг: 1 таблетка после еды."
+    }
+   ]
+  },
+  "2": {
+   "name": "Вторник",
+   "short": "Вт",
+   "wake": "09:00",
+   "blocks": [
+    {
+     "s": "09:00",
+     "e": "09:45",
+     "k": "rest",
+     "t": "Подъём",
+     "d": "Вода, умыться, завтрак. Телефон не трогать первые 30 минут."
+    },
+    {
+     "s": "09:45",
+     "e": "10:00",
+     "k": "rest",
+     "t": "Сесть за комп",
+     "d": "Открыть план, записать одну цель на фокус-блок."
+    },
+    {
+     "s": "10:00",
+     "e": "11:30",
+     "k": "art",
+     "t": "Концепт-арты",
+     "d": "Один концепт от силуэтов до чистового. Без переключения на другие идеи."
+    },
+    {
+     "s": "11:30",
+     "e": "11:45",
+     "k": "rest",
+     "t": "Перерыв",
+     "d": "Встать, размяться, вода. Без экрана."
+    },
+    {
+     "s": "11:45",
+     "e": "13:00",
+     "k": "art",
+     "t": "Концепт-арты",
+     "d": "Один концепт от силуэтов до чистового. Без переключения на другие идеи."
+    },
+    {
+     "s": "13:00",
+     "e": "14:00",
+     "k": "rest",
+     "t": "Обед и прогулка",
+     "d": "Хотя бы 20 минут на улице."
+    },
+    {
+     "s": "14:00",
+     "e": "15:30",
+     "k": "stock",
+     "t": "3D на стоки",
+     "d": "Модели под продажу: моделинг, оптимизация, превью, загрузка на площадку."
+    },
+    {
+     "s": "15:30",
+     "e": "15:45",
+     "k": "rest",
+     "t": "Перерыв",
+     "d": "Глаза и спина: отойти от монитора."
+    },
+    {
+     "s": "15:45",
+     "e": "17:00",
+     "k": "stock",
+     "t": "3D на стоки",
+     "d": "Модели под продажу: моделинг, оптимизация, превью, загрузка на площадку."
+    },
+    {
+     "s": "17:00",
+     "e": "17:30",
+     "k": "rest",
+     "t": "Перекус",
+     "d": "Отдых от экрана."
+    },
+    {
+     "s": "17:30",
+     "e": "18:30",
+     "k": "dnd",
+     "t": "DnD: заметки по лору",
+     "d": "Разобрать заметки, накопленные за неделю."
+    },
+    {
+     "s": "18:30",
+     "e": "19:30",
+     "k": "rest",
+     "t": "Ужин, конец работы",
+     "d": "Закрыть рабочие программы. Записать, с чего начать завтра."
+    },
+    {
+     "s": "19:30",
+     "e": "23:00",
+     "k": "games",
+     "t": "Свободный вечер",
+     "d": "Игры, фильмы, отдых — время для себя."
+    },
+    {
+     "s": "23:00",
+     "e": "23:30",
+     "k": "rest",
+     "t": "Готовиться ко сну",
+     "d": "Экран выключить, душ, свет приглушить."
+    }
+   ],
+   "meds": [
+    {
+     "t": "09:20",
+     "title": "Таблетки: завтрак",
+     "d": "Магне B6: 2 таблетки во время еды, запить стаканом воды. Афобазол 10 мг: 1 таблетка после еды."
+    },
+    {
+     "t": "13:30",
+     "title": "Таблетки: обед",
+     "d": "Магне B6: 2 таблетки во время еды, запить стаканом воды. Афобазол 10 мг: 1 таблетка после еды."
+    },
+    {
+     "t": "19:00",
+     "title": "Таблетки: ужин",
+     "d": "Магне B6: 2 таблетки во время еды, запить стаканом воды. Афобазол 10 мг: 1 таблетка после еды."
+    }
+   ]
+  },
+  "3": {
+   "name": "Среда",
+   "short": "Ср",
+   "wake": "09:00",
+   "blocks": [
+    {
+     "s": "09:00",
+     "e": "09:45",
+     "k": "rest",
+     "t": "Подъём",
+     "d": "Вода, умыться, завтрак. Телефон не трогать первые 30 минут."
+    },
+    {
+     "s": "09:45",
+     "e": "10:00",
+     "k": "rest",
+     "t": "Сесть за комп",
+     "d": "Открыть план, записать одну цель на фокус-блок."
+    },
+    {
+     "s": "10:00",
+     "e": "11:30",
+     "k": "dnd",
+     "t": "DnD сеттинг: лор и сюжет",
+     "d": "Мир, фракции, история, сюжетные зацепки."
+    },
+    {
+     "s": "11:30",
+     "e": "11:45",
+     "k": "rest",
+     "t": "Перерыв",
+     "d": "Встать, размяться, вода. Без экрана."
+    },
+    {
+     "s": "11:45",
+     "e": "13:00",
+     "k": "dnd",
+     "t": "DnD сеттинг: лор и сюжет",
+     "d": "Мир, фракции, история, сюжетные зацепки."
+    },
+    {
+     "s": "13:00",
+     "e": "14:00",
+     "k": "rest",
+     "t": "Обед и прогулка",
+     "d": "Хотя бы 20 минут на улице."
+    },
+    {
+     "s": "14:00",
+     "e": "15:30",
+     "k": "p3d",
+     "t": "3D для DnD сеттинга",
+     "d": "Оружие, броня или существа сеттинга."
+    },
+    {
+     "s": "15:30",
+     "e": "15:45",
+     "k": "rest",
+     "t": "Перерыв",
+     "d": "Глаза и спина: отойти от монитора."
+    },
+    {
+     "s": "15:45",
+     "e": "17:00",
+     "k": "p3d",
+     "t": "3D для DnD сеттинга",
+     "d": "Оружие, броня или существа сеттинга."
+    },
+    {
+     "s": "17:00",
+     "e": "17:30",
+     "k": "rest",
+     "t": "Перекус",
+     "d": "Отдых от экрана."
+    },
+    {
+     "s": "17:30",
+     "e": "18:30",
+     "k": "avatar",
+     "t": "НРИ Avatar: мелкие правки",
+     "d": "Баги на сайте, правка текстов механик."
+    },
+    {
+     "s": "18:30",
+     "e": "19:30",
+     "k": "rest",
+     "t": "Ужин, конец работы",
+     "d": "Закрыть рабочие программы. Записать, с чего начать завтра."
+    },
+    {
+     "s": "19:30",
+     "e": "23:00",
+     "k": "games",
+     "t": "Свободный вечер",
+     "d": "Игры, фильмы, отдых — время для себя."
+    },
+    {
+     "s": "23:00",
+     "e": "23:30",
+     "k": "rest",
+     "t": "Готовиться ко сну",
+     "d": "Экран выключить, душ, свет приглушить."
+    }
+   ],
+   "meds": [
+    {
+     "t": "09:20",
+     "title": "Таблетки: завтрак",
+     "d": "Магне B6: 2 таблетки во время еды, запить стаканом воды. Афобазол 10 мг: 1 таблетка после еды."
+    },
+    {
+     "t": "13:30",
+     "title": "Таблетки: обед",
+     "d": "Магне B6: 2 таблетки во время еды, запить стаканом воды. Афобазол 10 мг: 1 таблетка после еды."
+    },
+    {
+     "t": "19:00",
+     "title": "Таблетки: ужин",
+     "d": "Магне B6: 2 таблетки во время еды, запить стаканом воды. Афобазол 10 мг: 1 таблетка после еды."
+    }
+   ]
+  },
+  "4": {
+   "name": "Четверг",
+   "short": "Чт",
+   "wake": "09:00",
+   "blocks": [
+    {
+     "s": "09:00",
+     "e": "09:45",
+     "k": "rest",
+     "t": "Подъём",
+     "d": "Вода, умыться, завтрак. Телефон не трогать первые 30 минут."
+    },
+    {
+     "s": "09:45",
+     "e": "10:00",
+     "k": "rest",
+     "t": "Сесть за комп",
+     "d": "Открыть план, записать одну цель на фокус-блок."
+    },
+    {
+     "s": "10:00",
+     "e": "11:30",
+     "k": "avatar",
+     "t": "НРИ Avatar: механики и сюжет",
+     "d": "Правила, классы, кланы На'ви, сюжетные арки."
+    },
+    {
+     "s": "11:30",
+     "e": "11:45",
+     "k": "rest",
+     "t": "Перерыв",
+     "d": "Встать, размяться, вода. Без экрана."
+    },
+    {
+     "s": "11:45",
+     "e": "13:00",
+     "k": "avatar",
+     "t": "НРИ Avatar: механики и сюжет",
+     "d": "Правила, классы, кланы На'ви, сюжетные арки."
+    },
+    {
+     "s": "13:00",
+     "e": "14:00",
+     "k": "rest",
+     "t": "Обед и прогулка",
+     "d": "Хотя бы 20 минут на улице."
+    },
+    {
+     "s": "14:00",
+     "e": "15:30",
+     "k": "p3d",
+     "t": "3D: портфолио",
+     "d": "Доводка лучшей модели: текстуры, рендер, подача."
+    },
+    {
+     "s": "15:30",
+     "e": "15:45",
+     "k": "rest",
+     "t": "Перерыв",
+     "d": "Глаза и спина: отойти от монитора."
+    },
+    {
+     "s": "15:45",
+     "e": "17:00",
+     "k": "p3d",
+     "t": "3D: портфолио",
+     "d": "Доводка лучшей модели: текстуры, рендер, подача."
+    },
+    {
+     "s": "17:00",
+     "e": "17:30",
+     "k": "rest",
+     "t": "Перекус",
+     "d": "Отдых от экрана."
+    },
+    {
+     "s": "17:30",
+     "e": "18:30",
+     "k": "art",
+     "t": "Скетчи и референсы",
+     "d": "Быстрые наброски и сбор рефов для следующих концептов."
+    },
+    {
+     "s": "18:30",
+     "e": "19:30",
+     "k": "rest",
+     "t": "Ужин, конец работы",
+     "d": "Закрыть рабочие программы. Записать, с чего начать завтра."
+    },
+    {
+     "s": "19:30",
+     "e": "23:00",
+     "k": "games",
+     "t": "Свободный вечер",
+     "d": "Игры, фильмы, отдых — время для себя."
+    },
+    {
+     "s": "23:00",
+     "e": "23:30",
+     "k": "rest",
+     "t": "Готовиться ко сну",
+     "d": "Экран выключить, душ, свет приглушить."
+    }
+   ],
+   "meds": [
+    {
+     "t": "09:20",
+     "title": "Таблетки: завтрак",
+     "d": "Магне B6: 2 таблетки во время еды, запить стаканом воды. Афобазол 10 мг: 1 таблетка после еды."
+    },
+    {
+     "t": "13:30",
+     "title": "Таблетки: обед",
+     "d": "Магне B6: 2 таблетки во время еды, запить стаканом воды. Афобазол 10 мг: 1 таблетка после еды."
+    },
+    {
+     "t": "19:00",
+     "title": "Таблетки: ужин",
+     "d": "Магне B6: 2 таблетки во время еды, запить стаканом воды. Афобазол 10 мг: 1 таблетка после еды."
+    }
+   ]
+  },
+  "5": {
+   "name": "Пятница",
+   "short": "Пт",
+   "wake": "09:00",
+   "blocks": [
+    {
+     "s": "09:00",
+     "e": "09:45",
+     "k": "rest",
+     "t": "Подъём",
+     "d": "Вода, умыться, завтрак. Телефон не трогать первые 30 минут."
+    },
+    {
+     "s": "09:45",
+     "e": "10:00",
+     "k": "rest",
+     "t": "Сесть за комп",
+     "d": "Открыть план, записать одну цель на фокус-блок."
+    },
+    {
+     "s": "10:00",
+     "e": "11:30",
+     "k": "art",
+     "t": "Концепт-арты",
+     "d": "Один концепт от силуэтов до чистового. Без переключения на другие идеи."
+    },
+    {
+     "s": "11:30",
+     "e": "11:45",
+     "k": "rest",
+     "t": "Перерыв",
+     "d": "Встать, размяться, вода. Без экрана."
+    },
+    {
+     "s": "11:45",
+     "e": "13:00",
+     "k": "art",
+     "t": "Концепт-арты",
+     "d": "Один концепт от силуэтов до чистового. Без переключения на другие идеи."
+    },
+    {
+     "s": "13:00",
+     "e": "14:00",
+     "k": "rest",
+     "t": "Обед и прогулка",
+     "d": "Хотя бы 20 минут на улице."
+    },
+    {
+     "s": "14:00",
+     "e": "15:30",
+     "k": "stock",
+     "t": "3D на стоки",
+     "d": "Модели под продажу: моделинг, оптимизация, превью, загрузка на площадку."
+    },
+    {
+     "s": "15:30",
+     "e": "15:45",
+     "k": "rest",
+     "t": "Перерыв",
+     "d": "Глаза и спина: отойти от монитора."
+    },
+    {
+     "s": "15:45",
+     "e": "17:00",
+     "k": "stock",
+     "t": "3D на стоки",
+     "d": "Модели под продажу: моделинг, оптимизация, превью, загрузка на площадку."
+    },
+    {
+     "s": "17:00",
+     "e": "17:30",
+     "k": "rest",
+     "t": "Перекус",
+     "d": "Отдых от экрана."
+    },
+    {
+     "s": "17:30",
+     "e": "18:30",
+     "k": "dnd",
+     "t": "DnD: заметки по лору",
+     "d": "Разобрать заметки, накопленные за неделю."
+    },
+    {
+     "s": "18:30",
+     "e": "19:30",
+     "k": "rest",
+     "t": "Ужин, конец работы",
+     "d": "Закрыть рабочие программы. Записать, с чего начать завтра."
+    },
+    {
+     "s": "19:30",
+     "e": "23:00",
+     "k": "games",
+     "t": "Свободный вечер",
+     "d": "Игры, фильмы, отдых — время для себя."
+    },
+    {
+     "s": "23:00",
+     "e": "23:30",
+     "k": "rest",
+     "t": "Готовиться ко сну",
+     "d": "Экран выключить, душ, свет приглушить."
+    }
+   ],
+   "meds": [
+    {
+     "t": "09:20",
+     "title": "Таблетки: завтрак",
+     "d": "Магне B6: 2 таблетки во время еды, запить стаканом воды. Афобазол 10 мг: 1 таблетка после еды."
+    },
+    {
+     "t": "13:30",
+     "title": "Таблетки: обед",
+     "d": "Магне B6: 2 таблетки во время еды, запить стаканом воды. Афобазол 10 мг: 1 таблетка после еды."
+    },
+    {
+     "t": "19:00",
+     "title": "Таблетки: ужин",
+     "d": "Магне B6: 2 таблетки во время еды, запить стаканом воды. Афобазол 10 мг: 1 таблетка после еды."
+    }
+   ]
+  },
+  "6": {
+   "name": "Суббота",
+   "short": "Сб",
+   "wake": "10:00",
+   "blocks": [
+    {
+     "s": "10:00",
+     "e": "11:00",
+     "k": "rest",
+     "t": "Подъём и завтрак",
+     "d": "Без телефона первые 30 минут."
+    },
+    {
+     "s": "11:00",
+     "e": "13:30",
+     "k": "dnd",
+     "t": "DnD сеттинг: механики",
+     "d": "Один спокойный блок, без дедлайнов."
+    },
+    {
+     "s": "13:30",
+     "e": "14:30",
+     "k": "rest",
+     "t": "Обед и прогулка",
+     "d": ""
+    },
+    {
+     "s": "14:30",
+     "e": "19:00",
+     "k": "games",
+     "t": "Свои игры",
+     "d": "Отдых за неделю."
+    },
+    {
+     "s": "19:00",
+     "e": "22:30",
+     "k": "games",
+     "t": "Свободный вечер",
+     "d": "Фильм, сериал, игры — что захочется."
+    },
+    {
+     "s": "22:30",
+     "e": "23:30",
+     "k": "games",
+     "t": "Свободное время",
+     "d": "Экран выключить к 23:30."
+    }
+   ],
+   "meds": [
+    {
+     "t": "10:30",
+     "title": "Таблетки: завтрак",
+     "d": "Магне B6: 2 таблетки во время еды, запить стаканом воды. Афобазол 10 мг: 1 таблетка после еды."
+    },
+    {
+     "t": "14:00",
+     "title": "Таблетки: обед",
+     "d": "Магне B6: 2 таблетки во время еды, запить стаканом воды. Афобазол 10 мг: 1 таблетка после еды."
+    },
+    {
+     "t": "19:00",
+     "title": "Таблетки: ужин",
+     "d": "Магне B6: 2 таблетки во время еды, запить стаканом воды. Афобазол 10 мг: 1 таблетка после еды."
+    }
+   ]
+  }
+ }
+}
+</script>
+
+<script>
+const S=JSON.parse(document.getElementById("schedule").textContent);
+const DAYS=[0,1,2,3,4,5,6].map(i=>S.days[i]);
+const SLEEP=S.sleep;
+const WORKFREE=["rest","bf","games","meds"];
+const NAMES=Object.assign({},S.projects,{bf:"Созвоны с парнем"});
+const mins=s=>{const[h,m]=s.split(":").map(Number);return h*60+m};
+const fmt=m=>{const h=Math.floor(m/60),mm=m%60;return h?`${h} ч ${mm} мин`:`${mm} мин`};
+const hrs=m=>(m/60).toFixed(m%60?1:0).replace(".",",")+" ч";
+const col=k=>`var(--${k})`;
+const pad=n=>String(n).padStart(2,"0");
+const dkey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+
+/* ---------- Хранилище: отметки живут на телефоне (localStorage WebView) ---------- */
+let STATE={days:{}};
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+async function loadState(){
+  let st=null;
+  try{st=JSON.parse(lsGet("rezhim-state")||"null")}catch(e){}
+  STATE=st&&typeof st==="object"?st:{days:{}};
+  if(!STATE.days)STATE.days={};
+}
+function saveState(){lsSet("rezhim-state",JSON.stringify(STATE));scheduleSoon()}
+function rec(k){const r=STATE.days[k]||(STATE.days[k]={});r.done=r.done||{};return r}
+function peek(k){return STATE.days[k]||{done:{}}}
+
+/* ---------- Сегодня ---------- */
+function render(){
+  const now=new Date(), dow=now.getDay(), t=now.getHours()*60+now.getMinutes();
+  const day=DAYS[dow], bl=day.blocks, sl=mins(SLEEP), key=dkey(now), R=peek(key), sick=!!R.sick;
+  document.getElementById("clock").textContent=`${day.name}, ${now.toLocaleDateString("ru-RU",{day:"numeric",month:"long"})} · ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  document.getElementById("sickT").checked=sick;
+  document.getElementById("bfT").checked=!!R.bf;
+
+  const cur=bl.find(b=>t>=mins(b.s)&&t<mins(b.e));
+  let nxt=bl.find(b=>mins(b.s)>t&&!(sick&&!WORKFREE.includes(b.k)));
+  let title,sub,k,s,e,eyebrow="Сейчас",range="";
+  if(cur){title=cur.t;sub=cur.d;k=cur.k;s=mins(cur.s);e=mins(cur.e);range=`${cur.s} – ${cur.e}`;
+    if(!WORKFREE.includes(k)){
+      if(sick){eyebrow="Сейчас · болею";title="Отдых";k="sick";sub="Сегодня день восстановления. Лежи, пей воду, береги себя. Работа подождёт."}
+      else eyebrow="Сейчас · "+NAMES[k];
+    }}
+  else if(t>=sl||t<mins(day.wake)){
+    k="rest";title="Пора спать";
+    const tom=DAYS[(dow+(t>=sl?1:0))%7];
+    sub=`Отбой в ${SLEEP}. Подъём в ${tom.wake}. Закрой комп — завтрашний фокус-блок важнее.`;
+    s=sl;e=mins(tom.wake)+(t>=sl?1440:0);if(t<sl)s-=1440;
+    if(!nxt)nxt=tom.blocks[0];
+  } else {k=sick?"sick":"rest";title=sick?"Отдых":"Свободное окно";sub=sick?"Сегодня день восстановления.":"Между блоками. Можно отдохнуть или подготовиться к следующему.";s=t;e=nxt?mins(nxt.s):t+1}
+  const nowEl=document.getElementById("now");nowEl.style.setProperty("--c",col(k));
+  document.getElementById("nowEyebrow").textContent=eyebrow;
+  document.getElementById("nowTitle").textContent=title;
+  document.getElementById("nowSub").textContent=sub;
+  const tt=t<s?t+1440:t;
+  document.getElementById("nowTime").textContent=range;
+  document.getElementById("nowLeft").textContent=`осталось ${fmt(Math.max(0,e-tt))}`;
+  document.getElementById("nowBar").style.width=Math.min(100,Math.max(0,(tt-s)/(e-s)*100))+"%";
+  const nx=document.getElementById("next");nx.textContent="";
+  if(nxt){nx.append(`Дальше в ${nxt.s}: `);const b=document.createElement("b");b.textContent=nxt.t;nx.append(b)}
+
+  // таблетки
+  const due=(day.meds||[]).map((m,j)=>({...m,j})).find(m=>!R.done["m"+m.j]&&t>=mins(m.t)-10&&t<mins(m.t)+120);
+  const medEl=document.getElementById("med");
+  medEl.hidden=!due; nowEl.classList.toggle("hasmed",!!due);
+  if(due){document.getElementById("medTitle").textContent=`${due.title} · ${due.t}`;
+    document.getElementById("medText").textContent=due.d;
+    document.getElementById("medBtn").onclick=()=>markMed(key,due.j,due.title)}
+
+  // лента дня
+  document.getElementById("dayHead").textContent=`Сегодня · ${day.name}${sick?" · день отдыха":""}`;
+  const ul=document.getElementById("day");ul.innerHTML="";
+  const meds=(day.meds||[]).map((m,j)=>({s:m.t,e:m.t,k:"meds",t:m.title,d:m.d,med:j}));
+  const rows=[...bl.map((b,i)=>({...b,_i:i})),...meds].sort((a,b)=>mins(a.s)-mins(b.s)||(a.med!=null)-(b.med!=null));
+  rows.forEach(b=>{
+    const id=b.med!=null?"m"+b.med:String(b._i), work=!WORKFREE.includes(b.k), off=sick&&work;
+    const li=document.createElement("li");li.style.setProperty("--c",col(b.k));
+    if(b.med!=null)li.className="medrow"+(mins(b.s)<t?" past":"");
+    else if(off)li.className="off";
+    else if(b===cur||(cur&&b._i===bl.indexOf(cur)))li.className="cur";
+    else if(mins(b.e)<=t)li.className="past";
+    li.innerHTML=`<span class="t">${b.med!=null?b.s:b.s+"–"+b.e}</span><div><div class="ttl"></div><div class="sub"></div></div>`;
+    li.querySelector(".ttl").textContent=b.t;
+    const sd=li.querySelector(".sub"); sd.textContent=off?"Снято: болею, сегодня отдых":(b.d||""); if(!sd.textContent)sd.remove();
+    if((work&&!off)||b.med!=null){
+      const cb=document.createElement("input");cb.type="checkbox";cb.id="d"+id;cb.checked=!!R.done[id];cb.setAttribute("aria-label","Сделано: "+b.t);
+      cb.onchange=()=>{const r=rec(key);if(cb.checked)r.done[id]={k:b.k,m:b.med!=null?0:mins(b.e)-mins(b.s),t:b.t};else delete r.done[id];saveState();render()};
+      li.appendChild(cb);
+    } else li.appendChild(document.createElement("span"));
+    ul.appendChild(li);
+  });
+
+  // неделя
+  const wk=document.getElementById("wk");wk.innerHTML='<span></span><span class="wkh">Утро</span><span class="wkh">День</span><span class="wkh">Вечер</span>';
+  [1,2,3,4,5,6,0].forEach(d=>{
+    const D=DAYS[d],work=D.blocks.filter(b=>!WORKFREE.includes(b.k));
+    const uniq=[...new Map(work.map(b=>[b.t,b])).values()];
+    const cell=(b,txt)=>{const c=document.createElement("span");c.className="chip"+(b?"":" off");if(b)c.style.setProperty("--c",col(b.k));c.textContent=b?b.t:txt;return c};
+    const lab=document.createElement("span");lab.className="d"+(d===dow?" today":"");lab.textContent=D.short;wk.appendChild(lab);
+    const cells=uniq.slice(0,3).map(b=>cell(b));
+    const fill=d===0?["Отдых","План недели","Без работы"]:["Игры","Свободный вечер","Отдых"];
+    while(cells.length<3)cells.push(cell(null,fill[cells.length]));
+    cells.forEach(c=>wk.appendChild(c));
+  });
+  const lg=document.getElementById("legend");lg.innerHTML="";
+  ["avatar","art","dnd","p3d","stock","games","meds"].forEach(k=>{const s=document.createElement("span");s.style.setProperty("--c",col(k));s.textContent=NAMES[k];lg.appendChild(s)});
+
+  renderStats();
+}
+
+/* ---------- Статистика ---------- */
+let mode="week", offset=0;
+const MONTHS=["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
+function range(){
+  const t=new Date();t.setHours(0,0,0,0);
+  if(mode==="week"){
+    const st=new Date(t);st.setDate(t.getDate()-((t.getDay()+6)%7)+offset*7);
+    const en=new Date(st);en.setDate(st.getDate()+6);return[st,en];
+  }
+  const st=new Date(t.getFullYear(),t.getMonth()+offset,1), en=new Date(st.getFullYear(),st.getMonth()+1,0);return[st,en];
+}
+function renderStats(){
+  const[st,en]=range(), today=new Date();today.setHours(0,0,0,0);
+  const fmtD=d=>d.toLocaleDateString("ru-RU",{day:"numeric",month:"short"});
+  document.getElementById("period").textContent=mode==="week"?`${fmtD(st)} — ${fmtD(en)}`:`${MONTHS[st.getMonth()]} ${st.getFullYear()}`;
+  document.getElementById("pNext").disabled=offset>=0;
+  const keys=Object.keys(STATE.days).sort(), first=keys.length?keys[0]:dkey(today);
+
+  let total=0,blocks=0,sickDays=0,bfDays=0,medsTaken=0,medsExpected=0;const per={};
+  const days=[];
+  for(let d=new Date(st);d<=en;d.setDate(d.getDate()+1)){
+    const k=dkey(d), r=peek(k), counted=k>=first&&d<=today;
+    let mm=0,mt=0;
+    Object.values(r.done||{}).forEach(x=>{if(!x)return;if(x.k==="meds"){mt++;return}mm+=x.m||0;blocks++;per[x.k]=(per[x.k]||0)+(x.m||0)});
+    const mexp=(DAYS[d.getDay()].meds||[]).length;
+    if(counted){medsExpected+=mexp;medsTaken+=mt}
+    total+=mm; if(r.sick)sickDays++; if(r.bf)bfDays++;
+    days.push({d:new Date(d),k,mm,sick:!!r.sick,bf:!!r.bf,medsAll:mexp>0&&mt>=mexp,future:d>today});
+  }
+
+  const tiles=[[hrs(total),"работы отмечено"],[blocks,"блоков сделано"],[sickDays,"дней болела"],[bfDays,"вечеров с парнем"],[medsExpected?`${medsTaken}/${medsExpected}`:"—","таблеток выпито"]];
+  const tl=document.getElementById("tiles");tl.innerHTML="";
+  tiles.forEach(([v,l])=>{const e=document.createElement("div");e.className="tile";e.innerHTML="<b></b><span></span>";e.querySelector("b").textContent=v;e.querySelector("span").textContent=l;tl.appendChild(e)});
+
+  const bars=document.getElementById("bars");bars.innerHTML="";
+  const ent=Object.entries(per).sort((a,b)=>b[1]-a[1]), max=Math.max(1,...ent.map(e=>e[1]));
+  if(!ent.length){const p=document.createElement("div");p.className="empty";p.textContent="Пока пусто. Ставь галочки у сделанных блоков, и здесь появятся часы по проектам.";bars.appendChild(p)}
+  ent.forEach(([k,m])=>{const r=document.createElement("div");r.className="brow";r.style.setProperty("--c",col(k));
+    r.innerHTML=`<span class="lab"></span><span class="track"><i style="width:${(m/max*100).toFixed(1)}%"></i></span><span class="val">${hrs(m)}</span>`;
+    r.querySelector(".lab").textContent=NAMES[k]||k;bars.appendChild(r)});
+
+  const cal=document.getElementById("cal");cal.innerHTML="";
+  ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"].forEach(h=>{const e=document.createElement("span");e.className="h";e.textContent=h;cal.appendChild(e)});
+  for(let i=0;i<(st.getDay()+6)%7;i++){const e=document.createElement("span");e.className="cell blank";cal.appendChild(e)}
+  const maxDay=Math.max(240,...days.map(x=>x.mm));
+  days.forEach(x=>{
+    const e=document.createElement("div");e.className="cell"+(x.sick?" sick":"")+(dkey(x.d)===dkey(today)?" today":"");
+    if(!x.sick)e.style.setProperty("--lvl",(x.mm/maxDay).toFixed(2));
+    if(x.future)e.style.opacity=".45";
+    e.innerHTML=`<span class="n">${x.d.getDate()}</span><span class="h1">${x.sick?"болела":x.mm?hrs(x.mm):""}</span><span class="tags"></span>`;
+    const tg=e.querySelector(".tags");
+    if(x.bf){const i=document.createElement("i");i.style.background="var(--bf)";i.title="Играли с парнем";tg.appendChild(i)}
+    if(x.medsAll){const i=document.createElement("i");i.className="sq";i.style.background="var(--meds)";i.title="Все таблетки выпиты";tg.appendChild(i)}
+    e.title=`${x.d.toLocaleDateString("ru-RU",{weekday:"long",day:"numeric",month:"long"})}: ${x.sick?"болела":hrs(x.mm)+" работы"}`;
+    cal.appendChild(e);
+  });
+}
+function setMode(m){mode=m;offset=0;document.getElementById("pWeek").setAttribute("aria-pressed",m==="week");document.getElementById("pMonth").setAttribute("aria-pressed",m==="month");renderStats()}
+document.getElementById("pWeek").onclick=()=>setMode("week");
+document.getElementById("pMonth").onclick=()=>setMode("month");
+document.getElementById("pPrev").onclick=()=>{offset--;renderStats()};
+document.getElementById("pNext").onclick=()=>{if(offset<0){offset++;renderStats()}};
+
+document.getElementById("sickT").onchange=e=>{const k=dkey(new Date()),r=rec(k);r.sick=e.target.checked;saveState();render()};
+document.getElementById("bfT").onchange=e=>{const k=dkey(new Date()),r=rec(k);r.bf=e.target.checked;saveState();render()};
+
+/* ---------- Напоминания (локальные уведомления Android) ---------- */
+const CAP=window.Capacitor, LN=CAP&&CAP.isNativePlatform&&CAP.isNativePlatform()?CAP.Plugins.LocalNotifications:null;
+const APP=LN?CAP.Plugins.App:null;
+const DAYS_AHEAD=14;
+const OPT_DEF={blocks:true,workOnly:false,meds:true,sleep:true};
+let OPT=Object.assign({},OPT_DEF);
+try{Object.assign(OPT,JSON.parse(lsGet("rezhim-opts")||"{}"))}catch(e){}
+const optMap={optBlocks:"blocks",optWorkOnly:"workOnly",optMeds:"meds",optSleep:"sleep"};
+Object.entries(optMap).forEach(([id,k])=>{const el=document.getElementById(id);el.checked=!!OPT[k];
+  el.onchange=()=>{OPT[k]=el.checked;lsSet("rezhim-opts",JSON.stringify(OPT));syncOptUi();scheduleSoon()}});
+function syncOptUi(){document.getElementById("optWorkOnly").disabled=!OPT.blocks}
+syncOptUi();
+
+function at(day,hm,plusMin=0){const d=new Date(day);const m=mins(hm)+plusMin;d.setHours(0,0,0,0);d.setMinutes(m);return d}
+function buildPlan(){
+  const out=[], now=Date.now()+5000;
+  const base=new Date();base.setHours(0,0,0,0);
+  for(let i=0;i<DAYS_AHEAD;i++){
+    const day=new Date(base);day.setDate(base.getDate()+i);
+    const D=DAYS[day.getDay()], k=dkey(day), R=peek(k), sick=!!R.sick, idb=i*100;
+    if(OPT.blocks)D.blocks.forEach((b,j)=>{
+      const work=!WORKFREE.includes(b.k);
+      if(sick&&work)return;
+      if(OPT.workOnly&&!work)return;
+      const proj=work?NAMES[b.k]+" · ":"";
+      out.push({id:idb+j+1,at:at(day,b.s),channelId:"blocks",title:`${b.s} · ${b.t}`,
+        body:(proj+(b.d||`до ${b.e}`)).trim(),extra:{key:k}});
+    });
+    if(OPT.meds)(D.meds||[]).forEach((m,j)=>{
+      if(R.done&&R.done["m"+j])return;
+      const extra={key:k,med:j,title:m.title};
+      out.push({id:idb+50+j*2,at:at(day,m.t),channelId:"meds",actionTypeId:"MED",title:`💊 ${m.title}`,body:m.d,extra});
+      out.push({id:idb+51+j*2,at:at(day,m.t,30),channelId:"meds",actionTypeId:"MED",title:`💊 Не забудь: ${m.title}`,body:"Ещё не отмечено. "+m.d,extra});
+    });
+    if(OPT.sleep){
+      out.push({id:idb+90,at:at(day,SLEEP,-30),channelId:"blocks",title:`Через 30 минут отбой`,
+        body:`Отбой в ${SLEEP}. Подъём завтра в ${DAYS[(day.getDay()+1)%7].wake}. Закрывай комп.`,extra:{key:k}});
+    }
+  }
+  return out.filter(n=>n.at.getTime()>now).map(n=>({...n,largeBody:n.body,schedule:{at:n.at,allowWhileIdle:true},smallIcon:"ic_stat_notify",iconColor:n.channelId==="meds"?"#c43c3c":"#0f8a8a"}));
+}
+
+let schedT=null, schedRunning=Promise.resolve();
+function scheduleSoon(){if(!LN)return;clearTimeout(schedT);schedT=setTimeout(()=>{schedRunning=schedRunning.then(reschedule).catch(()=>{})},400)}
+async function reschedule(){
+  const perm=await LN.checkPermissions();
+  if(perm.display!=="granted"){updateStatus();return}
+  const pend=await LN.getPending();
+  const old=(pend.notifications||[]).filter(n=>n.id<900000);
+  if(old.length)await LN.cancel({notifications:old.map(n=>({id:n.id}))});
+  const plan=buildPlan();
+  for(let i=0;i<plan.length;i+=60)await LN.schedule({notifications:plan.slice(i,i+60)});
+  updateStatus(plan);
+}
+
+async function updateStatus(plan){
+  const st=document.getElementById("nStatus"), allow=document.getElementById("nAllow"), ex=document.getElementById("nExact");
+  if(!LN){st.textContent="Уведомления работают в приложении на телефоне. В браузере это только просмотр.";document.getElementById("nTest").hidden=true;return}
+  const perm=await LN.checkPermissions();
+  let exact="granted";try{exact=(await LN.checkExactNotificationSetting()).exact_alarm||"granted"}catch(e){}
+  allow.hidden=perm.display==="granted";
+  ex.hidden=exact==="granted"||perm.display!=="granted";
+  st.classList.toggle("warn",perm.display!=="granted"||exact!=="granted");
+  if(perm.display!=="granted"){st.textContent="Уведомления выключены — разреши их, иначе напоминания не придут.";return}
+  if(!plan){const p=await LN.getPending();plan=(p.notifications||[]).filter(n=>n.id<900000).map(n=>({at:new Date(n.schedule&&n.schedule.at),title:n.title}))}
+  const next=plan.slice().sort((a,b)=>a.at-b.at)[0];
+  let txt=`Запланировано напоминаний: ${plan.length} на ${DAYS_AHEAD} дней вперёд.`;
+  if(next&&!isNaN(next.at))txt+=` Ближайшее: ${next.at.toLocaleDateString("ru-RU",{weekday:"short"})} ${pad(next.at.getHours())}:${pad(next.at.getMinutes())} — ${next.title}.`;
+  if(exact!=="granted")txt+=" Без разрешения на точное время Android может присылать их с опозданием.";
+  st.textContent=txt;
+}
+
+function markMed(k,j,title){const r=rec(k);if(!r.done["m"+j]){r.done["m"+j]={k:"meds",m:0,t:title||"Таблетки"};saveState();render()}}
+
+async function initNotifications(){
+  if(!LN){updateStatus();return}
+  try{
+    await LN.createChannel({id:"blocks",name:"Блоки дня",description:"Начало блоков расписания и отбой",importance:4,visibility:1,vibration:true});
+    await LN.createChannel({id:"meds",name:"Таблетки",description:"Напоминания о таблетках",importance:5,visibility:1,vibration:true,lights:true,lightColor:"#c43c3c"});
+    await LN.registerActionTypes({types:[{id:"MED",actions:[{id:"taken",title:"Выпила ✓"},{id:"snooze",title:"Через 15 мин"}]}]});
+  }catch(e){}
+  LN.addListener("localNotificationActionPerformed",async a=>{
+    const n=a.notification||{}, x=n.extra||{};
+    if(x.med==null)return;
+    if(a.actionId==="taken"){markMed(x.key,x.med,x.title);try{await LN.removeDeliveredNotifications({notifications:[{id:n.id}]})}catch(e){}}
+    else if(a.actionId==="snooze"){
+      await LN.schedule({notifications:[{id:900000+(Date.now()/1000|0)%90000,title:n.title,body:n.body,largeBody:n.body,channelId:"meds",actionTypeId:"MED",extra:x,smallIcon:"ic_stat_notify",iconColor:"#c43c3c",schedule:{at:new Date(Date.now()+15*60000),allowWhileIdle:true}}]});
+    }
+  });
+  document.getElementById("nAllow").onclick=async()=>{await LN.requestPermissions();scheduleSoon();updateStatus()};
+  document.getElementById("nExact").onclick=async()=>{try{await LN.changeExactNotificationSetting()}catch(e){}updateStatus()};
+  document.getElementById("nTest").onclick=async()=>{
+    let p=await LN.checkPermissions();if(p.display!=="granted")p=await LN.requestPermissions();
+    if(p.display!=="granted"){updateStatus();return}
+    await LN.schedule({notifications:[{id:999999,channelId:"meds",actionTypeId:"MED",title:"💊 Проверка",body:"Так будут выглядеть напоминания. Кнопки ниже работают только для настоящих таблеток.",smallIcon:"ic_stat_notify",iconColor:"#c43c3c",schedule:{at:new Date(Date.now()+3000),allowWhileIdle:true}}]});
+  };
+  if(APP)APP.addListener("resume",()=>{render();scheduleSoon();updateStatus()});
+  const p=await LN.checkPermissions();
+  if(p.display==="prompt"||p.display==="prompt-with-rationale")await LN.requestPermissions();
+  scheduleSoon();
+}
+
+/* ---------- Резервная копия ---------- */
+document.getElementById("bkExport").onclick=async()=>{
+  const txt=JSON.stringify(STATE);
+  try{await navigator.clipboard.writeText(txt);alert("Копия скопирована. Вставь её в заметки или отправь себе в мессенджер.")}
+  catch(e){prompt("Скопируй этот текст:",txt)}
+};
+document.getElementById("bkImport").onclick=()=>{
+  const txt=prompt("Вставь сохранённую копию:");if(!txt)return;
+  try{const st=JSON.parse(txt);if(!st||typeof st.days!=="object")throw 0;
+    if(!confirm("Заменить текущие отметки копией?"))return;
+    STATE=st;saveState();render();alert("Готово, отметки восстановлены.")}
+  catch(e){alert("Не получилось прочитать копию. Проверь, что вставлен весь текст.")}
+};
+
+let lastDay=dkey(new Date());
+loadState().then(()=>{render();initNotifications();
+  setInterval(()=>{render();const k=dkey(new Date());if(k!==lastDay){lastDay=k;scheduleSoon()}},30000)});
+</script>
+
+</body></html>

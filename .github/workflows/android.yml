@@ -1,0 +1,70 @@
+name: Сборка APK
+
+on:
+  push:
+    paths-ignore: ["README.md"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Зависимости и перенос страницы в проект
+        run: |
+          npm ci
+          npx cap sync android
+
+      - name: Ключ подписи
+        working-directory: android/app
+        env:
+          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > rezhim.keystore
+          else
+            echo "::warning::Секрет SIGNING_KEYSTORE_BASE64 не задан — сборка подписана временным ключом, обновление поверх прошлой версии не встанет."
+            keytool -genkeypair -keystore rezhim.keystore -alias rezhim -keyalg RSA -keysize 2048 \
+              -validity 20000 -storepass rezhim-dnya -keypass rezhim-dnya -dname "CN=Rezhim Dnya"
+          fi
+
+      - name: Сборка
+        working-directory: android
+        env:
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease -PappVersionCode=${{ github.run_number }} --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk ../rezhim-dnya.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rezhim-dnya-apk
+          path: rezhim-dnya.apk
+
+      - name: Релиз со ссылкой на скачивание
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Мой режим дня 1.0.${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          files: rezhim-dnya.apk
+          body: |
+            Скачай `rezhim-dnya.apk` на телефон и открой его, чтобы установить или обновить приложение.
